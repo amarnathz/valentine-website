@@ -304,51 +304,61 @@ function setupMusicPlayer() {
     bgMusic.volume = config.music.volume || 0.5;
     bgMusic.load();
 
-    // ============================================
-    // MOBILE & DESKTOP AUTOPLAY HANDLING
-    // ============================================
-    
+    // Flag to prevent play/pause conflicts
+    let isPlayingRequested = false;
+
+    // Try autoplay
     if (config.music.autoplay) {
-        // Try autoplay immediately
+        isPlayingRequested = true;
         const playPromise = bgMusic.play();
         
         if (playPromise !== undefined) {
             playPromise
                 .then(() => {
-                    // Autoplay succeeded (rare on mobile)
+                    // Autoplay succeeded
                     musicToggle.textContent = config.music.stopText;
-                    console.log("🎵 Autoplay started!");
+                    console.log("✅ Music is playing!");
                 })
                 .catch(error => {
-                    // Autoplay blocked - show hint to user
-                    console.log("📱 Autoplay blocked on mobile. User must tap Play button.");
+                    // Autoplay blocked by browser
+                    isPlayingRequested = false;
+                    console.log("📱 Autoplay blocked. User must tap Play button.");
                     musicToggle.textContent = "🎵 Tap to Play Music";
                     musicToggle.style.animation = "pulse 2s infinite";
-                    
-                    // Also try to play on first user interaction
-                    document.addEventListener('click', function playOnInteraction() {
-                        bgMusic.play().then(() => {
-                            musicToggle.textContent = config.music.stopText;
-                            document.removeEventListener('click', playOnInteraction);
-                        }).catch(() => {});
-                    });
                 });
         }
     }
 
     // Toggle music on button click
     musicToggle.addEventListener('click', (e) => {
-        e.stopPropagation(); // Don't trigger the interaction listener above
+        e.stopPropagation();
         
         if (bgMusic.paused) {
-            bgMusic.play();
-            musicToggle.textContent = config.music.stopText;
-            musicToggle.style.animation = "none";
-            console.log("🎵 Music playing");
+            isPlayingRequested = true;
+            bgMusic.play()
+                .then(() => {
+                    musicToggle.textContent = config.music.stopText;
+                    musicToggle.style.animation = "none";
+                    console.log("🎵 Music playing!");
+                })
+                .catch(err => console.log("Play error:", err));
         } else {
+            isPlayingRequested = false;
             bgMusic.pause();
             musicToggle.textContent = config.music.startText;
             console.log("⏸️ Music paused");
         }
     });
+
+    // Play on first user interaction (for mobile)
+    document.addEventListener('click', function playOnFirstClick() {
+        if (isPlayingRequested === false && bgMusic.paused && config.music.autoplay) {
+            bgMusic.play()
+                .then(() => {
+                    musicToggle.textContent = config.music.stopText;
+                    console.log("🎵 Music started on user click!");
+                })
+                .catch(err => console.log("Auto-play error:", err));
+        }
+    }, { once: true });
 }
