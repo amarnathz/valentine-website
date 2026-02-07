@@ -245,7 +245,7 @@ function createHeartExplosion() {
         setRandomPosition(heart);
     }
 }
-
+/*
 // Music Player Setup
 function setupMusicPlayer() {
     const musicControls = document.getElementById('musicControls');
@@ -283,6 +283,72 @@ function setupMusicPlayer() {
         } else {
             bgMusic.pause();
             musicToggle.textContent = config.music.startText;
+        }
+    });
+}
+*/
+function setupMusicPlayer() {
+    const musicControls = document.getElementById('musicControls');
+    const musicToggle = document.getElementById('musicToggle');
+    const bgMusic = document.getElementById('bgMusic');
+    const musicSource = document.getElementById('musicSource');
+
+    // Only show controls if music is enabled in config
+    if (!config.music.enabled) {
+        musicControls.style.display = 'none';
+        return;
+    }
+
+    // Set music source and volume
+    musicSource.src = config.music.musicUrl;
+    bgMusic.volume = config.music.volume || 0.5;
+    bgMusic.load();
+
+    // ============================================
+    // MOBILE & DESKTOP AUTOPLAY HANDLING
+    // ============================================
+    
+    if (config.music.autoplay) {
+        // Try autoplay immediately
+        const playPromise = bgMusic.play();
+        
+        if (playPromise !== undefined) {
+            playPromise
+                .then(() => {
+                    // Autoplay succeeded (rare on mobile)
+                    musicToggle.textContent = config.music.stopText;
+                    console.log("🎵 Autoplay started!");
+                })
+                .catch(error => {
+                    // Autoplay blocked - show hint to user
+                    console.log("📱 Autoplay blocked on mobile. User must tap Play button.");
+                    musicToggle.textContent = "🎵 Tap to Play Music";
+                    musicToggle.style.animation = "pulse 2s infinite";
+                    
+                    // Also try to play on first user interaction
+                    document.addEventListener('click', function playOnInteraction() {
+                        bgMusic.play().then(() => {
+                            musicToggle.textContent = config.music.stopText;
+                            document.removeEventListener('click', playOnInteraction);
+                        }).catch(() => {});
+                    });
+                });
+        }
+    }
+
+    // Toggle music on button click
+    musicToggle.addEventListener('click', (e) => {
+        e.stopPropagation(); // Don't trigger the interaction listener above
+        
+        if (bgMusic.paused) {
+            bgMusic.play();
+            musicToggle.textContent = config.music.stopText;
+            musicToggle.style.animation = "none";
+            console.log("🎵 Music playing");
+        } else {
+            bgMusic.pause();
+            musicToggle.textContent = config.music.startText;
+            console.log("⏸️ Music paused");
         }
     });
 }
