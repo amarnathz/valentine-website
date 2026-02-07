@@ -1,8 +1,5 @@
-// ============================================
-// 💝 VALENTINE WEBSITE SCRIPT 💝
-// ============================================
-
-let config; // Define config here (will be set when page loads)
+// Initialize configuration
+const config = window.VALENTINE_CONFIG;
 
 // Validate configuration
 function validateConfig() {
@@ -53,14 +50,11 @@ function getDefaultColor(key) {
     return defaults[key];
 }
 
+// Set page title
+document.title = config.pageTitle;
+
 // Initialize the page content when DOM is loaded
 window.addEventListener('DOMContentLoaded', () => {
-    // Get config from config.js
-    config = window.VALENTINE_CONFIG;
-    
-    // Set page title
-    document.title = config.pageTitle;
-    
     // Validate configuration first
     validateConfig();
 
@@ -83,51 +77,11 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('yesBtn3').textContent = config.questions.third.yesBtn;
     document.getElementById('noBtn3').textContent = config.questions.third.noBtn;
 
-    // ============================================
-    // 💝 SETUP BUTTON CLICK TRACKING
-    // ============================================
-    
-    document.getElementById('yesBtn1').onclick = function() { 
-        console.log("✅ User clicked YES on Question 1");
-        showNextQuestion(2); 
-    };
-    
-    document.getElementById('noBtn1').onclick = function() { 
-        console.log("❌ User clicked NO on Question 1");
-        moveButton(this); 
-    };
-    
-    document.getElementById('secretAnswerBtn').onclick = function() { 
-        console.log("🤫 User found secret answer!");
-        showNextQuestion(2); 
-    };
-    
-    document.getElementById('loveMeter').addEventListener('input', function() {
-        console.log("💕 Love meter changed to: " + this.value + "%");
-    });
-    
-    document.getElementById('nextBtn').onclick = function() { 
-        console.log("➡️ User clicked NEXT on Question 2");
-        showNextQuestion(3); 
-    };
-    
-    document.getElementById('yesBtn3').onclick = function() { 
-        console.log("🎉🎉🎉 USER SAID YES! FINAL ANSWER!");
-        celebrate(); 
-    };
-    
-    document.getElementById('noBtn3').onclick = function() { 
-        console.log("❌ User clicked NO on Question 3");
-        moveButton(this); 
-    };
-
     // Create initial floating elements
     createFloatingElements();
 
     // Setup music player
     setupMusicPlayer();
-    
-    console.log("✨ Valentine Website Loaded Successfully!");
 });
 
 // Create floating hearts and bears
@@ -245,7 +199,7 @@ function createHeartExplosion() {
         setRandomPosition(heart);
     }
 }
-/*
+
 // Music Player Setup
 function setupMusicPlayer() {
     const musicControls = document.getElementById('musicControls');
@@ -284,46 +238,5 @@ function setupMusicPlayer() {
             bgMusic.pause();
             musicToggle.textContent = config.music.startText;
         }
-    });
-}
-*/
-function setupMusicPlayer() {
-    const musicControls = document.getElementById('musicControls');
-    const musicToggle = document.getElementById('musicToggle');
-    const bgMusic = document.getElementById('bgMusic');
-    const musicSource = document.getElementById('musicSource');
-
-    // Only show controls if music is enabled in config
-    if (!config.music.enabled) {
-        musicControls.style.display = 'none';
-        return;
-    }
-
-    // Set music source and volume
-    musicSource.src = config.music.musicUrl;
-    bgMusic.volume = config.music.volume || 0.5;
-    bgMusic.load();
-
-    // Try autoplay if enabled
-    if (config.music.autoplay) {
-        const playPromise = bgMusic.play();
-        if (playPromise !== undefined) {
-            playPromise.catch(error => {
-                console.log("Autoplay prevented by browser");
-                musicToggle.textContent = config.music.startText;
-            });
-        }
-    }
-
-    // Toggle music on button click
-    musicToggle.addEventListener('click', () => {
-        if (bgMusic.paused) {
-            bgMusic.play();
-            musicToggle.textContent = config.music.stopText;
-        } 
-        /*else {
-            bgMusic.pause();
-            musicToggle.textContent = config.music.startText;
-        }*/
     });
 } 
