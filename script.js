@@ -1,17 +1,104 @@
 // Initialize configuration
 const config = window.VALENTINE_CONFIG;
 
-// Validate configuration
+// ============================================
+// 💝 AUTO-SAVE CLICKS TO GITHUB 💝
+// ============================================
+
+const userInteractions = [];
+
+async function saveClickToGitHub(clickData) {
+    try {
+        const githubConfig = window.GITHUB_CONFIG;
+        
+        // Get current file content
+        const getUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.filePath}`;
+        
+        const getResponse = await fetch(getUrl, {
+            headers: {
+                'Authorization': `token ${githubConfig.token}`,
+                'Accept': 'application/vnd.github.v3+raw'
+            }
+        });
+        
+        let currentContent = '';
+        let sha = '';
+        
+        if (getResponse.ok) {
+            currentContent = await getResponse.text();
+            // Get the SHA for updating
+            const shaResponse = await fetch(getUrl, {
+                headers: {
+                    'Authorization': `token ${githubConfig.token}`,
+                    'Accept': 'application/vnd.github.v3+json'
+                }
+            });
+            const shaData = await shaResponse.json();
+            sha = shaData.sha;
+        }
+        
+        // Add new click data
+        const newEntry = `\n[${new Date().toLocaleString()}] ${clickData}`;
+        const newContent = currentContent + newEntry;
+        
+        // Update file in GitHub
+        const updateUrl = `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/${githubConfig.filePath}`;
+        
+        const updateResponse = await fetch(updateUrl, {
+            method: 'PUT',
+            headers: {
+                'Authorization': `token ${githubConfig.token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                message: `📊 Click tracked: ${clickData}`,
+                content: btoa(newContent), // Base64 encode
+                sha: sha
+            })
+        });
+        
+        if (updateResponse.ok) {
+            console.log("✅ Click saved to GitHub:", clickData);
+        }
+    } catch (error) {
+        console.log("⚠️ Could not save to GitHub (this is OK):", error);
+        // Still track locally
+        localStorage.setItem('valentineInteractions', JSON.stringify(userInteractions));
+    }
+}
+
+function logUserAction(action, buttonName, timestamp = new Date().toLocaleString()) {
+    const currentStep = getCurrentStep();
+    const clickEntry = `${action} | ${buttonName} | ${currentStep}`;
+    
+    userInteractions.push(clickEntry);
+    console.log("📊 Click Logged:", clickEntry);
+    
+    // Save to GitHub
+    saveClickToGitHub(clickEntry);
+    
+    // Also save locally
+    localStorage.setItem('valentineInteractions', JSON.stringify(userInteractions));
+}
+
+function getCurrentStep() {
+    if (!document.getElementById('question1').classList.contains('hidden')) return 'Q1: Do you like me?';
+    if (!document.getElementById('question2').classList.contains('hidden')) return 'Q2: Love Meter';
+    if (!document.getElementById('question3').classList.contains('hidden')) return 'Q3: Will you be my Valentine?';
+    if (!document.getElementById('celebration').classList.contains('hidden')) return 'Celebration!';
+    return 'Unknown';
+}
+
+// ============================================
+// REST OF YOUR EXISTING CODE
+// ============================================
+
 function validateConfig() {
     const warnings = [];
-
-    // Check required fields
     if (!config.valentineName) {
         warnings.push("Valentine's name is not set! Using default.");
         config.valentineName = "My Love";
     }
-
-    // Validate colors
     const isValidHex = (hex) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(hex);
     Object.entries(config.colors).forEach(([key, value]) => {
         if (!isValidHex(value)) {
@@ -19,26 +106,20 @@ function validateConfig() {
             config.colors[key] = getDefaultColor(key);
         }
     });
-
-    // Validate animation values
     if (parseFloat(config.animations.floatDuration) < 5) {
         warnings.push("Float duration too short! Setting to 5s minimum.");
         config.animations.floatDuration = "5s";
     }
-
     if (config.animations.heartExplosionSize < 1 || config.animations.heartExplosionSize > 3) {
         warnings.push("Heart explosion size should be between 1 and 3! Using default.");
         config.animations.heartExplosionSize = 1.5;
     }
-
-    // Log warnings if any
     if (warnings.length > 0) {
         console.warn("⚠️ Configuration Warnings:");
         warnings.forEach(warning => console.warn("- " + warning));
     }
 }
 
-// Default color values
 function getDefaultColor(key) {
     const defaults = {
         backgroundStart: "#ffafbd",
@@ -50,45 +131,72 @@ function getDefaultColor(key) {
     return defaults[key];
 }
 
-// Set page title
 document.title = config.pageTitle;
 
-// Initialize the page content when DOM is loaded
 window.addEventListener('DOMContentLoaded', () => {
-    // Validate configuration first
     validateConfig();
-
-    // Set texts from config
+    
     document.getElementById('valentineTitle').textContent = `${config.valentineName}, my love...`;
     
-    // Set first question texts
     document.getElementById('question1Text').textContent = config.questions.first.text;
     document.getElementById('yesBtn1').textContent = config.questions.first.yesBtn;
     document.getElementById('noBtn1').textContent = config.questions.first.noBtn;
     document.getElementById('secretAnswerBtn').textContent = config.questions.first.secretAnswer;
     
-    // Set second question texts
     document.getElementById('question2Text').textContent = config.questions.second.text;
     document.getElementById('startText').textContent = config.questions.second.startText;
     document.getElementById('nextBtn').textContent = config.questions.second.nextBtn;
     
-    // Set third question texts
     document.getElementById('question3Text').textContent = config.questions.third.text;
     document.getElementById('yesBtn3').textContent = config.questions.third.yesBtn;
     document.getElementById('noBtn3').textContent = config.questions.third.noBtn;
 
-    // Create initial floating elements
-    createFloatingElements();
+    // ============================================
+    // 💝 SETUP CLICK TRACKING FOR ALL BUTTONS
+    // ============================================
+    
+    document.getElementById('yesBtn1').onclick = function() { 
+        logUserAction('CLICK', 'YES Button - Question 1');
+        showNextQuestion(2); 
+    };
+    
+    document.getElementById('noBtn1').onclick = function() { 
+        logUserAction('CLICK', 'NO Button - Question 1 (Moved away)');
+        moveButton(this); 
+    };
+    
+    document.getElementById('secretAnswerBtn').onclick = function() { 
+        logUserAction('CLICK', 'Secret Answer Button');
+        showNextQuestion(2); 
+    };
+    
+    document.getElementById('loveMeter').addEventListener('input', function() {
+        logUserAction('METER', `Love Meter set to ${this.value}%`);
+    });
+    
+    document.getElementById('nextBtn').onclick = function() { 
+        logUserAction('CLICK', 'NEXT Button - Question 2');
+        showNextQuestion(3); 
+    };
+    
+    document.getElementById('yesBtn3').onclick = function() { 
+        logUserAction('CLICK', '🎉 YES BUTTON - FINAL ANSWER - SAID YES!');
+        celebrate(); 
+    };
+    
+    document.getElementById('noBtn3').onclick = function() { 
+        logUserAction('CLICK', 'NO Button - Question 3 (Moved away)');
+        moveButton(this); 
+    };
 
-    // Setup music player
+    createFloatingElements();
     setupMusicPlayer();
+    
+    logUserAction('PAGE_LOAD', 'Website opened');
 });
 
-// Create floating hearts and bears
 function createFloatingElements() {
     const container = document.querySelector('.floating-elements');
-    
-    // Create hearts
     config.floatingEmojis.hearts.forEach(heart => {
         const div = document.createElement('div');
         div.className = 'heart';
@@ -96,8 +204,6 @@ function createFloatingElements() {
         setRandomPosition(div);
         container.appendChild(div);
     });
-
-    // Create bears
     config.floatingEmojis.bears.forEach(bear => {
         const div = document.createElement('div');
         div.className = 'bear';
@@ -107,20 +213,17 @@ function createFloatingElements() {
     });
 }
 
-// Set random position for floating elements
 function setRandomPosition(element) {
     element.style.left = Math.random() * 100 + 'vw';
     element.style.animationDelay = Math.random() * 5 + 's';
     element.style.animationDuration = 10 + Math.random() * 20 + 's';
 }
 
-// Function to show next question
 function showNextQuestion(questionNumber) {
     document.querySelectorAll('.question-section').forEach(q => q.classList.add('hidden'));
     document.getElementById(`question${questionNumber}`).classList.remove('hidden');
 }
 
-// Function to move the "No" button when clicked
 function moveButton(button) {
     const x = Math.random() * (window.innerWidth - button.offsetWidth);
     const y = Math.random() * (window.innerHeight - button.offsetHeight);
@@ -129,7 +232,6 @@ function moveButton(button) {
     button.style.top = y + 'px';
 }
 
-// Love meter functionality
 const loveMeter = document.getElementById('loveMeter');
 const loveValue = document.getElementById('loveValue');
 const extraLove = document.getElementById('extraLove');
@@ -151,7 +253,6 @@ loveMeter.addEventListener('input', () => {
         loveMeter.style.width = `calc(100% + ${extraWidth}px)`;
         loveMeter.style.transition = 'width 0.3s';
         
-        // Show different messages based on the value
         if (value >= 5000) {
             extraLove.classList.add('super-love');
             extraLove.textContent = config.loveMessages.extreme;
@@ -169,26 +270,21 @@ loveMeter.addEventListener('input', () => {
     }
 });
 
-// Initialize love meter
 window.addEventListener('DOMContentLoaded', setInitialPosition);
 window.addEventListener('load', setInitialPosition);
 
-// Celebration function
 function celebrate() {
     document.querySelectorAll('.question-section').forEach(q => q.classList.add('hidden'));
     const celebration = document.getElementById('celebration');
     celebration.classList.remove('hidden');
     
-    // Set celebration messages
     document.getElementById('celebrationTitle').textContent = config.celebration.title;
     document.getElementById('celebrationMessage').textContent = config.celebration.message;
     document.getElementById('celebrationEmojis').textContent = config.celebration.emojis;
     
-    // Create heart explosion effect
     createHeartExplosion();
 }
 
-// Create heart explosion animation
 function createHeartExplosion() {
     for (let i = 0; i < 50; i++) {
         const heart = document.createElement('div');
@@ -200,25 +296,21 @@ function createHeartExplosion() {
     }
 }
 
-// Music Player Setup
 function setupMusicPlayer() {
     const musicControls = document.getElementById('musicControls');
     const musicToggle = document.getElementById('musicToggle');
     const bgMusic = document.getElementById('bgMusic');
     const musicSource = document.getElementById('musicSource');
 
-    // Only show controls if music is enabled in config
     if (!config.music.enabled) {
         musicControls.style.display = 'none';
         return;
     }
 
-    // Set music source and volume
     musicSource.src = config.music.musicUrl;
     bgMusic.volume = config.music.volume || 0.5;
     bgMusic.load();
 
-    // Try autoplay if enabled
     if (config.music.autoplay) {
         const playPromise = bgMusic.play();
         if (playPromise !== undefined) {
@@ -229,14 +321,15 @@ function setupMusicPlayer() {
         }
     }
 
-    // Toggle music on button click
     musicToggle.addEventListener('click', () => {
         if (bgMusic.paused) {
             bgMusic.play();
             musicToggle.textContent = config.music.stopText;
+            logUserAction('MUSIC', 'Music started');
         } else {
             bgMusic.pause();
             musicToggle.textContent = config.music.startText;
+            logUserAction('MUSIC', 'Music stopped');
         }
     });
-} 
+}
