@@ -88,11 +88,6 @@ const CONFIG = {
 
 
 // GitHub tracking configuration
-const GITHUB_CONFIG = {
-    token: "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", // Paste your token here
-    owner: "amarnathz", // Your GitHub username
-    repo: "valentine-website", // Your repo name
-    filePath: "clicks.txt" // File to save clicks
-};
+
 // Don't modify anything below this line unless you know what you're doing
 window.VALENTINE_CONFIG = CONFIG; 
