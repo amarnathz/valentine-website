@@ -304,61 +304,25 @@ function setupMusicPlayer() {
     bgMusic.volume = config.music.volume || 0.5;
     bgMusic.load();
 
-    // Flag to prevent play/pause conflicts
-    let isPlayingRequested = false;
-
-    // Try autoplay
+    // Try autoplay if enabled
     if (config.music.autoplay) {
-        isPlayingRequested = true;
         const playPromise = bgMusic.play();
-        
         if (playPromise !== undefined) {
-            playPromise
-                .then(() => {
-                    // Autoplay succeeded
-                    musicToggle.textContent = config.music.stopText;
-                    console.log("✅ Music is playing!");
-                })
-                .catch(error => {
-                    // Autoplay blocked by browser
-                    isPlayingRequested = false;
-                    console.log("📱 Autoplay blocked. User must tap Play button.");
-                    musicToggle.textContent = "🎵 Tap to Play Music";
-                    musicToggle.style.animation = "pulse 2s infinite";
-                });
+            playPromise.catch(error => {
+                console.log("Autoplay prevented by browser");
+                musicToggle.textContent = config.music.startText;
+            });
         }
     }
 
     // Toggle music on button click
-    musicToggle.addEventListener('click', (e) => {
-        e.stopPropagation();
-        
+    musicToggle.addEventListener('click', () => {
         if (bgMusic.paused) {
-            isPlayingRequested = true;
-            bgMusic.play()
-                .then(() => {
-                    musicToggle.textContent = config.music.stopText;
-                    musicToggle.style.animation = "none";
-                    console.log("🎵 Music playing!");
-                })
-                .catch(err => console.log("Play error:", err));
+            bgMusic.play();
+            musicToggle.textContent = config.music.stopText;
         } else {
-            isPlayingRequested = false;
             bgMusic.pause();
             musicToggle.textContent = config.music.startText;
-            console.log("⏸️ Music paused");
         }
     });
-
-    // Play on first user interaction (for mobile)
-    document.addEventListener('click', function playOnFirstClick() {
-        if (isPlayingRequested === false && bgMusic.paused && config.music.autoplay) {
-            bgMusic.play()
-                .then(() => {
-                    musicToggle.textContent = config.music.stopText;
-                    console.log("🎵 Music started on user click!");
-                })
-                .catch(err => console.log("Auto-play error:", err));
-        }
-    }, { once: true });
-}
+} 
