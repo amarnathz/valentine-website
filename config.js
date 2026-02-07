@@ -85,7 +85,7 @@ const CONFIG = {
     }
 };
 
-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
+
 
 // GitHub tracking configuration
 const GITHUB_CONFIG = {
